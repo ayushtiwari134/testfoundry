@@ -15,3 +15,6 @@ If you're exploring the repo early, expect active updates, new features, and fre
 CLI Tool: `testfoundry`  
 License: MIT  
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+
