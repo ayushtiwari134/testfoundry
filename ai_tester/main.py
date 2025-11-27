@@ -1,115 +1,80 @@
 import typer
 import os
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
-from ai_tester.utils import get_file_tree
-from ai_tester.llm import get_llm_response
+import time
+from .graph import build_graph
+from .ui import console, print_header, print_success, print_error, print_step
+from .logger import logger
 
-# Initialize the application
 app = typer.Typer()
-console = Console()
 
 
 @app.command()
-def analyze(path: str = "."):
+def demo():
     """
-    Agent 1: Analyzes the codebase structure and creates a summary.
+    Showcases the CLI UI components (Hello World).
+    Run this to see the ASCII art and spinners without invoking LLMs.
     """
-    console.print(
-        Panel.fit(
-            f"[bold blue]Agent 1: Code Analyzer[/bold blue]\nTarget: {path}",
-            border_style="blue",
-        )
+    print_header()
+
+    print_step("Initializing System Core")
+    with console.status("[bold green]Booting up AI Agents...[/]", spinner="dots"):
+        time.sleep(1.5)
+        console.log("Agents loaded.")
+        time.sleep(0.5)
+        console.log("LLM Connection established.")
+
+    print_step("Analyzing Dummy Data")
+    with console.status("[bold cyan]Reading file structure...[/]", spinner="weather"):
+        time.sleep(2)
+        console.log("Found 12 Python files.")
+        console.log("Found 3 Config files.")
+
+    print_success(
+        "Demo initialization complete! Run 'python -m ai_tester.main run .' to start."
     )
-
-    # Step 1: Scan the file system
-    with console.status(
-        "[bold blue]Scanning file system...[/bold blue]", spinner="dots"
-    ):
-        file_tree = get_file_tree(path)
-
-    console.print(f"[dim]Found file structure. Sending to AI...[/dim]")
-
-    # Step 2: Ask the AI to analyze the structure
-    prompt = (
-        f"You are an expert Lead Developer. Analyze this project structure and tell me "
-        f"what kind of project this is, what the tech stack likely is, and what the key files are.\n\n"
-        f"Project Structure:\n{file_tree}"
-    )
-
-    with console.status(
-        "[bold yellow]Analyzing project architecture...[/bold yellow]",
-        spinner="aesthetic",
-    ):
-        analysis = get_llm_response(prompt)
-
-    # Step 3: Display the report
-    console.print(
-        Panel(Markdown(analysis), title="Project Analysis Report", border_style="green")
-    )
-
-    # Save the context for the next agent
-    with open("project_context.md", "w") as f:
-        f.write(analysis)
-    console.print("\n[bold green]✓ Analysis saved to project_context.md[/bold green]")
 
 
 @app.command()
-def plan():
+def run(path: str = typer.Argument(..., help="Path to the codebase to test")):
     """
-    Agent 2: Reads the analysis and generates a detailed Test Plan.
+    Runs the AI Agentic Tester on the specified repository path.
     """
-    console.print(
-        Panel.fit(
-            "[bold magenta]Agent 2: Test Architect[/bold magenta]",
-            border_style="magenta",
-        )
-    )
+    print_header()
 
-    # Check if Agent 1 has done its job
-    if not os.path.exists("project_context.md"):
-        console.print("[bold red]Error:[/bold red] 'project_context.md' not found.")
-        console.print("Please run [bold blue]ai-tester analyze[/bold blue] first.")
+    if not os.path.exists(path):
+        print_error(f"Path '{path}' does not exist.")
         raise typer.Exit(code=1)
 
-    # Step 1: Read the context
-    with open("project_context.md", "r") as f:
-        context = f.read()
+    print_step(f"Target Acquired: {path}")
 
-    # Step 2: Ask AI to generate a plan
-    prompt = (
-        f"You are a QA Architect. Based on the following project analysis, create a comprehensive Test Plan.\n"
-        f"The plan should include:\n"
-        f"1. Recommended Testing Frameworks (e.g. pytest for Python, Jest for JS)\n"
-        f"2. Unit Test Strategy (Key functions to test)\n"
-        f"3. Integration Test Strategy (How modules interact)\n"
-        f"4. Edge Cases (What could go wrong?)\n\n"
-        f"Project Analysis:\n{context}"
-    )
+    app_graph = build_graph()
 
-    with console.status(
-        "[bold magenta]Drafting test strategy...[/bold magenta]", spinner="material"
-    ):
-        test_plan = get_llm_response(prompt)
+    # Initialize the state dictionary
+    initial_state = {
+        "target_dir": path,
+        "file_list": [],
+        "project_context": "",
+        "test_plan": "",
+        "generated_test_code": "",
+        "test_results": "",
+        "final_report": "",
+    }
 
-    # Step 3: Display and Save
-    console.print(
-        Panel(Markdown(test_plan), title="Test Strategy Plan", border_style="cyan")
-    )
+    # Execute the graph
+    # We wrap execution in a status spinner, but nodes also log their own rich progress.
+    try:
+        with console.status(
+            "[bold white]TestFoundry is working...[/]", spinner="earth"
+        ):
+            app_graph.invoke(initial_state)
 
-    with open("test_plan.md", "w") as f:
-        f.write(test_plan)
+        print_success("Mission Accomplished!")
+        console.print(f"[dim]Report generated at: {os.getcwd()}/test_report.txt[/]")
+        console.print(f"[dim]Tests generated at: tests/test_generated.py[/]")
 
-    console.print("\n[bold green]✓ Test Plan saved to test_plan.md[/bold green]")
-
-
-@app.command()
-def run_tests():
-    """
-    Placeholder for Agent 3: Runs tests and reports.
-    """
-    console.print("[bold red]Agent 3 initialized![/bold red] Running tests...")
+    except Exception as e:
+        print_error(f"Critical Failure: {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

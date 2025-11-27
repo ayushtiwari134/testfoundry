@@ -1,7 +1,7 @@
 import os
 from typing import List, Set
 from pathlib import Path
-from file_types import BINARY_EXTENSIONS, IGNORED_DIRS, IGNORED_FILES
+from .file_types import BINARY_EXTENSIONS, IGNORED_DIRS, IGNORED_FILES
 
 
 def is_binary_file(filepath: str) -> bool:
